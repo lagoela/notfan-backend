@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -25,12 +26,13 @@ public class FileController {
 
     @PostMapping()
     public List<FollowingNotFollowingModel> uploadAndProcessZip(@RequestParam("zipFile")MultipartFile file){
+        List<FollowingNotFollowingModel> followingNotFollowing;
         try {
-            fileService.processZip(file);
+            followingNotFollowing = fileService.processZip(file);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return null;
+        return followingNotFollowing;
     }
 }
 

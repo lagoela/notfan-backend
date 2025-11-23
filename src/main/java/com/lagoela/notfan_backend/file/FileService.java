@@ -3,6 +3,7 @@ package com.lagoela.notfan_backend.file;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.lagoela.notfan_backend.json.FollowersJsonStructure;
+import com.lagoela.notfan_backend.json.FollowingJsonStructure;
 import com.lagoela.notfan_backend.json.FollowingModel;
 import com.lagoela.notfan_backend.json.FollowingNotFollowingModel;
 import org.springframework.stereotype.Service;
@@ -32,13 +33,24 @@ public class FileService {
         if(!Objects.equals(file.getContentType(), "application/zip")) {
             throw new IOException("File is not a zip");
         }
-
-
         Map<String, Path> jsonFiles = unzipFile(file);
 
-        List<String> followersList = processFollowersJson(jsonFiles.get("followers"));
+        List<FollowingNotFollowingModel> followingNotFollowing = new ArrayList<FollowingNotFollowingModel>();
 
-        return null;
+        Map<String, String> followersList = processFollowersJson(jsonFiles.get("followers"));
+        List<FollowingModel> followingList = processFollowingJson(jsonFiles.get("following"));
+
+        for (FollowingModel followingUser : followingList) {
+            if (!followersList.containsKey(followingUser.getUserNickname())) {
+                FollowingNotFollowingModel notFollowingUser = FollowingNotFollowingModel.builder()
+                        .userNickname(followingUser.getUserNickname())
+                        .profileLink(followingUser.getProfileLink()).build();
+
+                followingNotFollowing.add(notFollowingUser);
+            }
+        }
+
+        return followingNotFollowing;
     }
 
     private Map<String, Path> unzipFile(MultipartFile zip) throws IOException {
@@ -133,8 +145,8 @@ public class FileService {
         return jsonPath;
     }
 
-    private List<String> processFollowersJson(Path jsonPath) throws IOException {
-        List<String> followers = new ArrayList<String>();
+    private Map<String, String> processFollowersJson(Path jsonPath) throws IOException {
+        Map<String, String> followers = new HashMap<String, String>();
         try {
             Gson gson = new Gson();
             Reader reader;
@@ -147,7 +159,10 @@ public class FileService {
             Type listType = new TypeToken<List<FollowersJsonStructure>>() {}.getType();
             List<FollowersJsonStructure> followersJsonList = gson.fromJson(reader, listType);
             for (FollowersJsonStructure follower : followersJsonList) {
-                System.out.println(follower);
+                followers.put(
+                        follower.getString_list_data().getFirst().getValue(),
+                        follower.getString_list_data().getFirst().getHref()
+                );
             }
 
         } catch (Exception e) {
@@ -156,7 +171,30 @@ public class FileService {
         return followers;
     }
 
-    private List<FollowingModel> processFollowingJson(Path jsonPath) {
-        return null;
+    private List<FollowingModel> processFollowingJson(Path jsonPath) throws IOException {
+        List<FollowingModel> following = new ArrayList<FollowingModel>();
+
+        try {
+            Gson gson = new Gson();
+            Reader reader;
+            try {
+                reader = Files.newBufferedReader(jsonPath);
+            } catch (IOException e) {
+                throw new IOException(e);
+            }
+
+            FollowingJsonStructure followingJson = gson.fromJson(reader, FollowingJsonStructure.class);
+            for (FollowingJsonStructure.relationships_following followingUser : followingJson.getRelationships_following()) {
+                FollowingModel userFollowing = FollowingModel.builder()
+                        .userNickname(followingUser.getTitle())
+                        .profileLink(followingUser.getString_list_data().getFirst().getHref())
+                        .build();
+                following.add(userFollowing);
+            };
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return following;
     }
 }

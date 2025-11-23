@@ -14,7 +14,7 @@ public class FollowersJsonStructure {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
-    private static class string_list_data {
+    public static class string_list_data {
         private String href;
         private String value;
         private Integer timestamp;
